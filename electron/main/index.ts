@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu } from 'electron'
 import path from 'node:path'
 import os from 'node:os'
 
@@ -24,6 +24,8 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1000,
     height: 563,
+    frame: false, // 去掉原生边框
+    titleBarStyle: 'hidden', // 隐藏标题栏
     webPreferences: {
       preload: isDev 
         ? path.join(APP_ROOT, 'dist-electron', 'preload', 'index.js')
@@ -32,6 +34,9 @@ function createWindow() {
       nodeIntegration: false,
     },
   })
+
+  // 移除默认菜单
+  Menu.setApplicationMenu(null)
 
   // Test active push message to Renderer-process.
   win.webContents.on('did-finish-load', () => {
@@ -57,6 +62,33 @@ ipcMain.handle('get-system-info', () => {
     node: process.versions.node,
     platform: os.platform(),
   }
+})
+
+// IPC 处理器 - 窗口控制
+ipcMain.handle('window-minimize', () => {
+  if (win) {
+    win.minimize()
+  }
+})
+
+ipcMain.handle('window-maximize', () => {
+  if (win) {
+    if (win.isMaximized()) {
+      win.unmaximize()
+    } else {
+      win.maximize()
+    }
+  }
+})
+
+ipcMain.handle('window-close', () => {
+  if (win) {
+    win.close()
+  }
+})
+
+ipcMain.handle('window-is-maximized', () => {
+  return win ? win.isMaximized() : false
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

@@ -10,6 +10,13 @@ interface IShellAPI {
   openExternal(url: string): Promise<void>
 }
 
+interface IWindowControlAPI {
+  minimize(): Promise<void>
+  maximize(): Promise<void>
+  close(): Promise<void>
+  isMaximized(): Promise<boolean>
+}
+
 interface IElectronAPI {
   ipcRenderer: {
     on(channel: string, listener: (event: any, ...args: any[]) => void): void
@@ -18,12 +25,14 @@ interface IElectronAPI {
     invoke(channel: string, ...args: any[]): Promise<any>
   }
   shell: IShellAPI
+  windowControl: IWindowControlAPI
 }
 
 declare global {
   interface Window {
     ipcRenderer: IElectronAPI['ipcRenderer']
     shell: IShellAPI
+    windowControl: IWindowControlAPI
   }
 }
 

@@ -26,3 +26,11 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
 contextBridge.exposeInMainWorld('shell', {
   openExternal: (url: string) => shell.openExternal(url),
 })
+
+// Expose window control API
+contextBridge.exposeInMainWorld('windowControl', {
+  minimize: () => ipcRenderer.invoke('window-minimize'),
+  maximize: () => ipcRenderer.invoke('window-maximize'),
+  close: () => ipcRenderer.invoke('window-close'),
+  isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+})
