@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, screen } from 'electron'
 import path from 'node:path'
 import os from 'node:os'
 
@@ -21,9 +21,17 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 let win: BrowserWindow | null
 
 function createWindow() {
+  // 获取主显示器的尺寸
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize
+  
+  // 设置窗口大小为屏幕的 1/2
+  const windowWidth = Math.floor(screenWidth / 2)
+  const windowHeight = Math.floor(screenHeight / 2)
+
   win = new BrowserWindow({
-    width: 1000,
-    height: 563,
+    width: windowWidth,
+    height: windowHeight,
     frame: false, // 去掉原生边框
     titleBarStyle: 'hidden', // 隐藏标题栏
     webPreferences: {
