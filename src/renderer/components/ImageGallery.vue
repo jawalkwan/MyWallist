@@ -21,7 +21,7 @@
       >
         <div class="image-card">
           <img 
-            :src="image.urls.regular" 
+            :src="image.displayUrl || image.urls.regular" 
             :alt="image.alt_description || 'Unsplash Photo'"
             loading="lazy"
             @load="onImageLoad"
@@ -30,6 +30,10 @@
             <div class="image-info">
               <span class="photographer">📷 {{ image.user.name }}</span>
               <span class="likes">❤️ {{ image.likes }}</span>
+            </div>
+            <div class="screen-info">
+              <span>📐 {{ screenInfo.width }}×{{ screenInfo.height }}</span>
+              <span>{{ getOrientationLabel(screenInfo.orientation) }}</span>
             </div>
           </div>
         </div>
@@ -50,7 +54,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import axios from 'axios'
 import { UNSPLASH_CONFIG } from '@/config/unsplash'
 
@@ -62,6 +66,13 @@ const hasMore = ref(true)
 const error = ref('')
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 
+// 屏幕信息
+const screenInfo = ref({
+  width: window.innerWidth,
+  height: window.innerHeight,
+  orientation: getScreenOrientation()
+})
+
 // 计算列数（根据窗口宽度）
 const columnCount = computed(() => {
   const width = window.innerWidth
@@ -70,6 +81,37 @@ const columnCount = computed(() => {
   if (width < 1200) return 3
   return 4
 })
+
+// 获取屏幕方向
+function getScreenOrientation(): 'landscape' | 'portrait' | 'squarish' {
+  const ratio = window.innerWidth / window.innerHeight
+  if (ratio > 1.1) return 'landscape'  // 横屏
+  if (ratio < 0.9) return 'portrait'   // 竖屏
+  return 'squarish'                     // 方形
+}
+
+// 根据屏幕方向获取对应的图片URL
+function getImageUrlForScreen(image: any): string {
+  const { orientation } = screenInfo.value
+  
+  // Unsplash 提供的不同尺寸
+  // thumb: 小缩略图
+  // small: 小尺寸 (适合移动端)
+  // regular: 常规尺寸 (1080px)
+  // full: 全尺寸
+  // raw: 原始尺寸
+  
+  if (orientation === 'landscape') {
+    // 横屏：使用 regular 或 full
+    return image.urls.regular
+  } else if (orientation === 'portrait') {
+    // 竖屏：优先使用 portrait 优化的URL（如果可用），否则用 regular
+    return image.urls.portrait || image.urls.regular
+  } else {
+    // 方形：使用 regular
+    return image.urls.regular
+  }
+}
 
 // IntersectionObserver 实例
 let observer: IntersectionObserver | null = null
@@ -89,11 +131,17 @@ const loadImages = async () => {
   error.value = ''
 
   try {
+    // 根据屏幕方向设置 orientation 参数
+    const orientationParam = screenInfo.value.orientation
+    
+    console.log(`Loading images for ${orientationParam} screen (${screenInfo.value.width}x${screenInfo.value.height})`)
+
     const response = await axios.get(`${UNSPLASH_CONFIG.BASE_URL}/photos`, {
       params: {
         page: page.value,
         per_page: UNSPLASH_CONFIG.PER_PAGE,
-        order_by: UNSPLASH_CONFIG.ORDER_BY
+        order_by: UNSPLASH_CONFIG.ORDER_BY,
+        orientation: orientationParam  // 根据屏幕方向筛选图片
       },
       headers: {
         'Authorization': `Client-ID ${UNSPLASH_CONFIG.ACCESS_KEY}`
@@ -106,7 +154,13 @@ const loadImages = async () => {
       hasMore.value = false
     }
 
-    images.value = [...images.value, ...newImages]
+    // 为每张图片添加适合当前屏幕的URL
+    const processedImages = newImages.map((img: any) => ({
+      ...img,
+      displayUrl: getImageUrlForScreen(img)
+    }))
+
+    images.value = [...images.value, ...processedImages]
     page.value++
   } catch (err: any) {
     console.error('Failed to load images:', err)
@@ -122,6 +176,18 @@ const loadImages = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 重新加载图片（当屏幕方向改变时）
+const reloadImagesForNewOrientation = async () => {
+  // 重置状态
+  images.value = []
+  page.value = 1
+  hasMore.value = true
+  error.value = ''
+  
+  // 重新加载
+  await loadImages()
 }
 
 // 图片加载完成回调
@@ -150,11 +216,43 @@ const setupObserver = () => {
   observer.observe(loadMoreTrigger.value)
 }
 
-// 处理窗口 resize
-const handleResize = () => {
-  // 窗口大小改变时，列数会自动通过 computed 属性更新
-  // 这里可以添加其他需要的逻辑
+// 防抖函数
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: ReturnType<typeof setTimeout> | null = null
+  
+  return (...args: Parameters<T>) => {
+    if (timeout !== null) {
+      clearTimeout(timeout)
+    }
+    timeout = setTimeout(() => func(...args), wait)
+  }
 }
+
+// 处理窗口 resize
+let lastOrientation = screenInfo.value.orientation
+
+const handleResize = debounce(() => {
+  const newWidth = window.innerWidth
+  const newHeight = window.innerHeight
+  const newOrientation = getScreenOrientation()
+  
+  // 更新屏幕信息
+  screenInfo.value = {
+    width: newWidth,
+    height: newHeight,
+    orientation: newOrientation
+  }
+  
+  // 如果方向改变了，重新加载图片
+  if (newOrientation !== lastOrientation && images.value.length > 0) {
+    console.log(`Screen orientation changed from ${lastOrientation} to ${newOrientation}`)
+    lastOrientation = newOrientation
+    reloadImagesForNewOrientation()
+  }
+}, 500) // 500ms 防抖
 
 // 生命周期钩子
 onMounted(() => {
@@ -169,6 +267,17 @@ onUnmounted(() => {
   }
   window.removeEventListener('resize', handleResize)
 })
+
+// 获取屏幕方向的标签
+function getOrientationLabel(orientation: string): string {
+  const labels: Record<string, string> = {
+    'landscape': '🖥️ 横屏',
+    'portrait': '📱 竖屏',
+    'squarish': '⬜ 方形'
+  }
+  return labels[orientation] || orientation
+}
+
 </script>
 
 <style scoped>
@@ -282,6 +391,18 @@ onUnmounted(() => {
   align-items: center;
   color: white;
   font-size: 13px;
+  margin-bottom: 5px;
+}
+
+.screen-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .photographer {

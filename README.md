@@ -28,6 +28,8 @@ MyWallist 是一款优雅的桌面图片浏览应用，集成了 Unsplash API。
 - 🖼️ **图片懒加载** - 优化性能，仅在图片进入视口时加载
 - 🎨 **优雅交互** - 悬停显示图片信息和摄影师 attribution
 - 📐 **窗口自适应** - 初始窗口大小为屏幕的 1/2，支持随意调整
+- 🎯 **智能方向适配** - 根据屏幕方向（横屏/竖屏/方形）自动筛选合适的图片
+- 🔍 **分辨率优化** - 根据当前窗口尺寸选择最优图片URL，提升加载速度
 
 ## 🛠️ 技术栈
 
@@ -119,6 +121,11 @@ MyWallist/
 │       ├── layout/       # 布局组件
 │       └── App.vue       # 根组件
 ├── .env.example          # 环境变量示例
+├── .gitignore            # Git 忽略文件配置
+├── README.md             # 项目说明文档
+├── UNSPLASH_CONFIG_GUIDE.md  # Unsplash 配置指南
+├── SCREEN_RESOLUTION_FEATURE.md  # 屏幕分辨率适配功能说明
+├── TESTING_GUIDE.md      # 测试指南
 └── package.json
 ```
 
@@ -171,6 +178,49 @@ const observer = new IntersectionObserver(
 window.addEventListener('resize', handleResize)
 ```
 
+### 🎯 智能屏幕方向适配
+
+**这是本应用的核心特色功能！**
+
+应用会自动检测当前窗口的屏幕方向，并向 Unsplash API 请求适合该方向的图片：
+
+#### 方向检测逻辑
+
+``typescript
+// 根据宽高比判断方向
+const ratio = window.innerWidth / window.innerHeight
+
+if (ratio > 1.1) return 'landscape'  // 横屏（桌面模式）
+if (ratio < 0.9) return 'portrait'   // 竖屏（移动模式）
+return 'squarish'                     // 方形
+```
+
+#### API 请求优化
+
+``typescript
+// 根据屏幕方向筛选图片
+const response = await axios.get('/photos', {
+  params: {
+    orientation: screenInfo.value.orientation,  // landscape | portrait | squarish
+    // ... 其他参数
+  }
+})
+```
+
+#### 实时响应
+
+- ✅ 监听窗口 resize 事件
+- ✅ 500ms 防抖处理，避免频繁请求
+- ✅ 检测到方向改变时自动重新加载合适的图片
+- ✅ 悬停显示当前屏幕信息和方向状态
+
+**优势：**
+- 📉 **减少带宽**: 只加载适合当前屏幕的图片
+- ⚡ **提升速度**: 选择合适的图片尺寸
+- 🎨 **更佳体验**: 图片构图与屏幕方向匹配
+
+详细文档请查看 [SCREEN_RESOLUTION_FEATURE.md](./SCREEN_RESOLUTION_FEATURE.md)
+
 ## ⚠️ API 限制
 
 Unsplash API 有以下限制：
@@ -205,6 +255,26 @@ A: 编辑 `src/renderer/config/unsplash.ts`，修改 `ORDER_BY` 的值：
 - `'latest'`: 最新上传
 - `'popular'`: 最受欢迎
 - `'oldest'`: 最早上传
+
+### Q: 为什么调整窗口大小时会重新加载图片？
+
+A: 这是智能方向适配功能。当检测到屏幕方向改变时（如从横屏变为竖屏），应用会自动重新请求适合新方向的图片，确保最佳展示效果。如果不希望此行为，可以移除 `handleResize` 中的方向检测逻辑。
+
+### Q: 如何禁用方向自动适配？
+
+A: 编辑 `ImageGallery.vue`，注释掉 `handleResize` 函数中的方向切换逻辑：
+```typescript
+// 注释掉这部分代码
+// if (newOrientation !== lastOrientation && images.value.length > 0) {
+//   reloadImagesForNewOrientation()
+// }
+```
+
+## 📚 相关文档
+
+- [Unsplash 配置指南](./UNSPLASH_CONFIG_GUIDE.md) - 详细讲解如何获取和配置 Access Key
+- [屏幕分辨率适配功能](./SCREEN_RESOLUTION_FEATURE.md) - 深入了解智能方向适配的实现原理
+- [测试指南](./TESTING_GUIDE.md) - 完整的测试流程和用例
 
 ## 📄 许可证
 
