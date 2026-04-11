@@ -14,6 +14,9 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron/main',
+            rollupOptions: {
+              external: ['electron'],
+            },
           },
         },
       },
@@ -24,6 +27,13 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron/preload',
+            rollupOptions: {
+              output: {
+                format: 'cjs',
+                entryFileNames: 'index.js',
+              },
+              external: ['electron'],
+            },
           },
         },
       },
@@ -45,5 +55,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+  },
+  // 定义全局常量替换方式
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
   },
 })

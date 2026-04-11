@@ -31,7 +31,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 export default defineComponent({
@@ -39,13 +39,33 @@ export default defineComponent({
   setup() {
     const route = useRoute()
     
+    // 使用 ref 存储系统信息
+    const electron = ref<string>('N/A')
+    const node = ref<string>('N/A')
+    const platform = ref<string>('N/A')
+    
+    // 组件挂载后通过 IPC 获取系统信息
+    onMounted(async () => {
+      try {
+        // 通过 ipcRenderer 获取系统信息
+        const systemInfo = await window.ipcRenderer.invoke('get-system-info')
+        if (systemInfo) {
+          electron.value = systemInfo.electron || 'N/A'
+          node.value = systemInfo.node || 'N/A'
+          platform.value = systemInfo.platform || 'N/A'
+        }
+      } catch (error) {
+        console.error('Failed to get system info:', error)
+      }
+    })
+    
     return {
-      electron: process.versions.electron,
+      electron,
       name: route.name,
-      node: process.versions.node,
+      node,
       path: route.path,
-      platform: require('os').platform(),
-      vue: '3.5.13' // Vue 3 version
+      platform,
+      vue: '3.5.32' // Vue 3 version
     }
   }
 })

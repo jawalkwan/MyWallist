@@ -1,10 +1,16 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'node:path'
+import os from 'node:os'
 
-// 使用 process.cwd() 和相对路径来避免 import.meta.url 的问题
-const APP_ROOT = process.cwd()
+// 判断是否为开发模式
+const isDev = process.env.NODE_ENV === 'development' || process.defaultApp || /[\\/]electron[\\/]/.test(process.execPath)
 
-export const MAIN_DIST = APP_ROOT
+// 获取应用根目录
+const APP_ROOT = isDev 
+  ? path.resolve(process.cwd())  // 开发模式：使用当前工作目录
+  : path.dirname(process.execPath)  // 生产模式：使用可执行文件所在目录
+
+export const MAIN_DIST = path.join(APP_ROOT, 'dist-electron')
 export const RENDERER_DIST = path.join(APP_ROOT, 'dist')
 export const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 
@@ -19,7 +25,11 @@ function createWindow() {
     width: 1000,
     height: 563,
     webPreferences: {
-      preload: path.join(APP_ROOT, 'dist-electron', 'preload', 'index.js'),
+      preload: isDev 
+        ? path.join(APP_ROOT, 'dist-electron', 'preload', 'index.js')
+        : path.join(MAIN_DIST, 'preload', 'index.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   })
 
@@ -31,10 +41,23 @@ function createWindow() {
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    // win.loadFile('dist/index.html')
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
+  
+  // 开发模式下打开开发者工具
+  if (isDev) {
+    win.webContents.openDevTools()
+  }
 }
+
+// IPC 处理器 - 获取系统信息
+ipcMain.handle('get-system-info', () => {
+  return {
+    electron: process.versions.electron,
+    node: process.versions.node,
+    platform: os.platform(),
+  }
+})
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
