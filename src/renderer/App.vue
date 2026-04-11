@@ -4,10 +4,12 @@
   </div>
 </template>
 
-<script>
-  export default {
-    name: 'mywallist'
-  }
+<script lang="ts">
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+  name: 'mywallist'
+})
 </script>
 
 <style>

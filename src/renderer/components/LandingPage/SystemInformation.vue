@@ -30,19 +30,25 @@
   </div>
 </template>
 
-<script>
-  export default {
-    data () {
-      return {
-        electron: process.versions.electron,
-        name: this.$route.name,
-        node: process.versions.node,
-        path: this.$route.path,
-        platform: require('os').platform(),
-        vue: require('vue/package.json').version
-      }
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { useRoute } from 'vue-router'
+
+export default defineComponent({
+  name: 'system-information',
+  setup() {
+    const route = useRoute()
+    
+    return {
+      electron: process.versions.electron,
+      name: route.name,
+      node: process.versions.node,
+      path: route.path,
+      platform: require('os').platform(),
+      vue: '3.5.13' // Vue 3 version
     }
   }
+})
 </script>
 
 <style scoped>
