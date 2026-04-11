@@ -1,27 +1,15 @@
 import { app, BrowserWindow } from 'electron'
-import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+// 使用 process.cwd() 和相对路径来避免 import.meta.url 的问题
+const APP_ROOT = process.cwd()
 
-// The built directory structure
-//
-// ├─┬ dist-electron
-// │ ├─┬ main
-// │ │ └── index.js    > Electron-Main
-// │ └─┬ preload
-// │   └── index.mjs   > Preload-Scripts
-// ├─┬ dist
-// │ └── index.html    > Electron-Renderer
-//
-process.env.APP_ROOT = path.join(__dirname, '..')
-
-export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
-export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
+export const MAIN_DIST = APP_ROOT
+export const RENDERER_DIST = path.join(APP_ROOT, 'dist')
 export const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
-  ? path.join(process.env.APP_ROOT, 'public')
+  ? path.join(APP_ROOT, 'public')
   : RENDERER_DIST
 
 let win: BrowserWindow | null
@@ -31,7 +19,7 @@ function createWindow() {
     width: 1000,
     height: 563,
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index.mjs'),
+      preload: path.join(APP_ROOT, 'dist-electron', 'preload', 'index.js'),
     },
   })
 
